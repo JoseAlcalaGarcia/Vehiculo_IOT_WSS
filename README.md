@@ -124,3 +124,21 @@ Para facilitar las pruebas, el cliente WSS se conecta sin validar el certificado
 ## Historial
 
 El firmware manda `conectado:true` al activar y `conectado:false` al desactivar. El backend debe insertar historial solo cuando `conectado` sea `true`; al desactivar debe actualizar el estado sin crear otro registro.
+
+
+## Ver las notificaciones WebSocket en el monitor serial
+
+Abre el Monitor Serial de PlatformIO a **115200 baudios**. Cada mensaje de texto recibido desde FastAPI se imprime completo antes de procesarse. Verás delimitadores como:
+
+- `[WSS] >>> NOTIFICACION RECIBIDA <<<`
+- `Contenido recibido:`
+- `[WSS] >>> FIN DE PROCESAMIENTO <<<`
+
+Debajo del JSON original también se muestran los campos interpretados: tipo, acción, vehículo, comando, estado, origen, duración y pausa. Si una notificación se ignora (por ejemplo, porque corresponde a otro vehículo o fue originada por el propio ESP8266), la terminal mostrará el motivo.
+
+La impresión se realiza para todos los mensajes WebSocket de texto recibidos, aunque el evento no corresponda a un movimiento que el firmware pueda ejecutar.
+
+
+## Mapeo directo de comandos WebSocket a salidas
+
+Los eventos remotos usan los IDs conocidos de la API (23 a 33) para seleccionar directamente la salida del SN74HC595. Esto evita que la activacion fisica dependa de la cache de nombres descargada por HTTP. El monitor serial confirma la salida elegida y los bytes enviados a SN2/SN1 al actualizar el latch.

@@ -14,6 +14,7 @@ void Control595::writeRegisters(uint8_t sn2, uint8_t sn1) {
   shiftOut(Config::PIN_DATA, Config::PIN_CLOCK, MSBFIRST, sn2);
   shiftOut(Config::PIN_DATA, Config::PIN_CLOCK, MSBFIRST, sn1);
   digitalWrite(Config::PIN_LATCH, HIGH);
+  Serial.printf("[595] LATCH actualizado | SN2=0x%02X SN1=0x%02X\n", sn2, sn1);
 }
 
 void Control595::activate(OutputRegister reg, uint8_t mask) {

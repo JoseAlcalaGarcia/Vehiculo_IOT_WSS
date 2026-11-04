@@ -80,47 +80,59 @@ void MovementManager::stopAll() {
 }
 
 void MovementManager::handleRemoteState(int id, bool active) {
-  if (id <= 0) return;
+  if (id <= 0) {
+    Serial.println(F("WS: id_comando invalido; no se modifica ninguna salida."));
+    return;
+  }
 
+  // Apagado: solo apagar si el comando indicado es el que esta activo.
   if (!active) {
-    // Un evento de apagado solo puede detener el comando que realmente está activo.
     if (activeMovement && activeCommandId == id) {
+      Serial.printf("WS: apagando comando %d.\n", id);
       hw.allOff();
       activeMovement = nullptr;
       activeCommandId = -1;
-      Serial.printf("WS: comando %d desactivado.\n", id);
+    } else {
+      Serial.printf("WS: se recibio apagado para %d, pero no es el comando activo.\n", id);
     }
     return;
   }
 
-  const char* name = api.commandName(id);
-  if (!name) {
-    Serial.printf("WS: id_comando %d no está en la lista de comandos cargada.\n", id);
-    return;
-  }
-
-  const String target(name);
+  // Mapeo directo de los IDs reales de la API a las salidas fisicas.
+  // No depende de que GET /comandos haya llenado la cache de nombres.
   const Movement* found = nullptr;
-  for (size_t i = 0; i < MOVEMENT_COUNT; ++i) {
-    String candidate(MOVEMENTS[i].apiName);
-    candidate.toUpperCase();
-    if (candidate == target) {
-      found = &MOVEMENTS[i];
-      break;
-    }
+  switch (id) {
+    case 23: found = &MOVEMENTS[5]; break;  // AVANZAR - SN1 QF
+    case 24: found = &MOVEMENTS[6]; break;  // RETROCEDER - SN1 QG
+    case 25: found = &MOVEMENTS[8]; break;  // GIRO_DERECHA - SN2 QA
+    case 26: found = &MOVEMENTS[11]; break; // GIRO_IZQUIERDA - SN2 QD
+    case 27: found = &MOVEMENTS[4]; break;  // ROTAR_DERECHA - SN1 QE
+    case 28: found = &MOVEMENTS[7]; break;  // ROTAR_IZQUIERDA - SN1 QH
+    case 29: found = &MOVEMENTS[10]; break; // EXCAVAR - SN2 QC
+    case 30: found = &MOVEMENTS[9]; break;  // SOLTAR - SN2 QB
+    case 31: found = &MOVEMENTS[1]; break;  // LUZ - SN1 QB
+    case 32: found = &MOVEMENTS[3]; break;  // SONIDO - SN1 QD
+    case 33: found = &MOVEMENTS[0]; break;  // DEMO_DEFECTO - SN1 QA
+    default:
+      Serial.printf("WS: id_comando %d no tiene una salida fisica asignada.\n", id);
+      return;
   }
 
-  if (!found) {
-    Serial.printf("WS: no existe salida física para '%s'.\n", name);
+  if (activeMovement && activeCommandId == id) {
+    Serial.printf("WS: comando %d ya estaba activo; se conserva.\n", id);
     return;
   }
 
-  if (activeMovement && activeCommandId == id) return;
+  // Garantizar que no queden dos movimientos activos simultaneamente.
   hw.allOff();
   hw.activate(found->reg, found->mask);
   activeMovement = found;
   activeCommandId = id;
-  Serial.printf("WS: comando remoto activado: %s (%d).\n", name, id);
+
+  Serial.printf("WS: SALIDA ACTIVADA -> comando=%d, nombre=%s, registro=%s, mascara=0x%02X\n",
+                id, found->apiName,
+                found->reg == OutputRegister::SN1 ? "SN1" : "SN2",
+                found->mask);
 }
 
 bool MovementManager::isActive() const {
